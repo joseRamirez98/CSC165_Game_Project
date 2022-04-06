@@ -30,9 +30,9 @@ public class MyGame extends VariableFrameRateGame
 	private Vector3f currentPosition;
 	private double startTime, prevTime, elapsedTime, deltaTime;
 
-	private GameObject cube, plane, childNeptune, neptune, childJupiter, jupiter, childSaturn, saturn, childEarth, earth, avatar, x, y, z;
-	private ObjShape cubeS, planeS, sphereS, dolS, linxS, linyS, linzS;
-	private TextureImage cubex, earthx, saturnx, jupiterx, neptunex, doltx;
+	private GameObject cube, plane, childNeptune, neptune, childJupiter, jupiter, childSaturn, saturn, childEarth, earth, avatar, x, y, z,terr;
+	private ObjShape cubeS, planeS, sphereS, dolS, linxS, linyS, linzS, terrS;
+	private TextureImage cubex, earthx, saturnx, jupiterx, neptunex, doltx, hills,grass,desert;
 	private Light light;
 	private NodeController rcY, rcZ, bc;
 
@@ -42,6 +42,8 @@ public class MyGame extends VariableFrameRateGame
 	private float dolphinLife = 100.0f;
 	private int itemCount = 0;
 	private int maxItemCnt = 4;
+
+	private int fluffyClouds,yellowClouds, lakeIslands,desertScape; //Skyboxes
 
 	private boolean earthCollected = false;
 	private boolean jupiterCollected = false;
@@ -67,6 +69,7 @@ public class MyGame extends VariableFrameRateGame
 		linxS = new Line(new Vector3f(0f,0f,0f), new Vector3f(3f,0f,0f));
 		linyS = new Line(new Vector3f(0f,0f,0f), new Vector3f(0f,3f,0f));
 		linzS = new Line(new Vector3f(0f,0f,0f), new Vector3f(0f,0f,-3f));
+		terrS = new TerrainPlane(1000);
 	}
 
 	@Override
@@ -78,6 +81,9 @@ public class MyGame extends VariableFrameRateGame
 		jupiterx = new TextureImage("jupiter.jpg");
 		saturnx = new TextureImage("saturn.jpg");
 		neptunex = new TextureImage("neptune.jpg");
+		hills = new TextureImage("hills.jpg");
+		//grass = new TextureImage("grass.jpg");
+		desert = new TextureImage("desert.jpg");
 	}
 
 	@Override
@@ -202,6 +208,15 @@ public class MyGame extends VariableFrameRateGame
 		(x.getRenderStates()).enableRendering();
 		(y.getRenderStates()).enableRendering();
 		(z.getRenderStates()).enableRendering();
+		
+		// build terraiun object
+		//terr = new GameObject(GameObject.root(), terrS, grass);
+		terr = new GameObject(GameObject.root(), terrS, desert);
+		initialTranslation = (new Matrix4f()).translation(0f,0f,0f);
+		terr.setLocalTranslation(initialTranslation);
+		initialScale = (new Matrix4f()).scaling(20.0f,1.0f, 20.0f);
+		terr.setLocalScale(initialScale);
+		terr.setHeightMap(hills);
 	}
 
 	@Override
@@ -229,7 +244,20 @@ public class MyGame extends VariableFrameRateGame
 		rightCamera.setN(new Vector3f(0,-1,0));
 	}
 
-
+	
+	@Override
+	public void loadSkyBoxes(){
+		fluffyClouds = (engine.getSceneGraph()).loadCubeMap("fluffyClouds");
+		//yellowClouds = (engine.getSceneGraph()).loadCubeMap("yellowClouds");
+		//lakeIslands = (engine.getSceneGraph()).loadCubeMap("lakeIslands");
+		desertScape = (engine.getSceneGraph()).loadCubeMap("desertScape");
+		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
+		//(engine.getSceneGraph()).setActiveSkyBoxTexture(yellowClouds);
+		//(engine.getSceneGraph()).setActiveSkyBoxTexture(lakeIslands);
+		(engine.getSceneGraph()).setActiveSkyBoxTexture(desertScape);
+		(engine.getSceneGraph()).setSkyBoxEnabled(true);
+	}
+	
 	@Override
 	public void initializeGame()
 	{	prevTime = System.currentTimeMillis();
@@ -358,9 +386,15 @@ public class MyGame extends VariableFrameRateGame
 		// update inputs and orbit controller camera
 		im.update((float)elapsedTime);
 		orbitController.setRotationAmount((float) elapsedTime);
+		
+		// update altitude of dolphin based on height map
+		Vector3f loc = avatar.getWorldLocation();
+		float height = terr.getHeight(loc.x(), loc.z());
+		avatar.setLocalLocation(new Vector3f(loc.x(), height, loc.z()));
 		orbitController.updateCameraPosition(); 
 	}
-
+	
+	
 	
 	/* Random Float Generator. Min and Max are inclusive. */
 	private float generateRandomFloat(float min, float max)
@@ -442,7 +476,28 @@ public class MyGame extends VariableFrameRateGame
 
 	@Override
 	public void keyPressed(KeyEvent e)
-	{	
+	{	switch(e.getKeyCode()){
+			case KeyEvent.VK_1:
+			{
+				(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
+				//(engine.getSceneGraph()).setActiveSkyBoxTexture(yellowClouds);
+				(engine.getSceneGraph()).setSkyBoxEnabled(true);
+				break;
+			}
+			case KeyEvent.VK_2:
+			{
+				//(engine.getSceneGraph()).setActiveSkyBoxTexture(lakeIslands);
+				(engine.getSceneGraph()).setActiveSkyBoxTexture(desertScape);
+				(engine.getSceneGraph()).setSkyBoxEnabled(true);
+				break;
+			}
+			case KeyEvent.VK_3:
+			{
+				(engine.getSceneGraph()).setSkyBoxEnabled(false);
+				break;
+			}
+		
+		}
 		super.keyPressed(e);
 	}
 
