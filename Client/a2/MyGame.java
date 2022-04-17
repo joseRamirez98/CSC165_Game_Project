@@ -243,7 +243,8 @@ public class MyGame extends VariableFrameRateGame
 		terr = new GameObject(GameObject.root(), terrS, desert);
 		initialTranslation = (new Matrix4f()).translation(0f,0f,0f);
 		terr.setLocalTranslation(initialTranslation);
-		initialScale = (new Matrix4f()).scaling(20.0f,1.0f, 20.0f);
+		//initialScale = (new Matrix4f()).scaling(20.0f,1.0f, 20.0f);
+		initialScale = (new Matrix4f()).scaling(30.0f, 1.0f, 30.0f):
 		terr.setLocalScale(initialScale);
 		terr.setHeightMap(hills);
 	}
