@@ -31,6 +31,16 @@ import net.java.games.input.Component.Identifier.*;
 import java.util.concurrent.TimeUnit;
 import tage.networking.IGameConnection.ProtocolType;
 
+import tage.audio.*;
+import com.jogamp.openal.ALFactory;
+
+import tage.physics.PhysicsEngine;
+import tage.physics.PhysicsObject;
+import tage.physics.PhysicsEngineFactory;
+import tage.physics.JBullet.*;
+import com.bulletphysics.dynamics.RigidBody;
+import com.bulletphysics.collision.dispatch.CollisionObject;
+
 public class MyGame extends VariableFrameRateGame
 {
 	private static Engine engine;
@@ -40,27 +50,36 @@ public class MyGame extends VariableFrameRateGame
 	private Vector3f currentPosition;
 	private double startTime, prevTime, elapsedTime, deltaTime;
 
-	private GameObject childNeptune, neptune, childJupiter, jupiter, childSaturn, saturn, childEarth, earth, avatar, x, y, z,terr;
-	private ObjShape sphereS, dolS, linxS, linyS, linzS, terrS, ghostS;
-	private TextureImage earthx, saturnx, jupiterx, neptunex, doltx, hills,grass,desert, ghostT;
+	private GameObject coin, coinTwo, coinThree, coinFour, childCoinTwo, childCoinThree, childCoinFour, avatar, avatarTwo, x, y, z,terr;
+	private ObjShape coinS, coinTwoS, avatarS, avaTwoS, linxS, linyS, linzS, terrS, ghostS;
+	private AnimatedShape avaS; 
+	private TextureImage coinX, coinTwoX, avatarTwox, carx, hills,desert, ghostT;
 	private Light light;
 	private NodeController rcY, rcZ, bc;
 
-	private double earthLocX, earthLocZ, jupiterLocX, jupiterLocZ, saturnLocX, saturnLocZ, neptuneLocX, neptuneLocZ;
+	/* Audio Sound*/
+	private IAudioManager audioMgr;
+	private Sound coinSound, blueCoinSound,nascarRacersExtSound, NascarRacersThemeSound,finalLapSound, gameSound, gotitemSound, lapSound, levelupSound, lowhealthSound, sboomSound, gameoverSound, thud1Sound, titleSound, weirdhitSound, winnerSound;
+
+	private PhysicsEngine physicsEngine;
+	private PhysicsObject avatarP, avatarTwoP, planeP;
+	private boolean running = false;
+	private float vals[] = new float[16];
 
 	/* New Attributes */
 	private float minDistance; // Minimum distance to collect a game object.
 	private float maxDistance; // The max distance the camera can be from dolphin.
 	private float dolphinLife;
-	private int itemCount;
-	private int maxItemCnt;
+	private int coinCount;
+	private int lapCount=0;
+	private int maxCoinCount;
+
+	private boolean coinOneCollected = true;
+	private boolean coinTwoCollected = false;
+	private boolean coinThreeCollected = false;
+	private boolean coinFourCollected = false;
 
 	private int fluffyClouds,yellowClouds, lakeIslands,desertScape; //Skyboxes
-
-	private boolean earthCollected;
-	private boolean jupiterCollected;
-	private boolean saturnCollected;
-	private boolean neptuneCollected;
 
 	private File scriptFile;
 	ScriptEngine jsEngine;
@@ -96,8 +115,13 @@ public class MyGame extends VariableFrameRateGame
 	{	
 		ghostS = new Sphere();
 		terrS = new TerrainPlane(1000);
-		sphereS = new Sphere();
-		dolS = new ImportedModel("dolphinHighPoly.obj");
+		avatarS = new ImportedModel("car2.obj");
+		// avaS = new AnimatedShape("car.rkm", "car_skeleton.rks");
+		// avaS.loadAnimation("LEFT", "left_turn.rka"); 
+  		// avaS.loadAnimation("RIGHT", "right_turn.rka"); 
+		avaTwoS = new ImportedModel("car.obj");
+		coinS = new ImportedModel("coin.obj");
+		coinTwoS = new ImportedModel("coin.obj");
 		linxS = new Line(new Vector3f(0f,0f,0f), new Vector3f(3f,0f,0f));
 		linyS = new Line(new Vector3f(0f,0f,0f), new Vector3f(0f,3f,0f));
 		linzS = new Line(new Vector3f(0f,0f,0f), new Vector3f(0f,0f,-3f));
@@ -107,14 +131,12 @@ public class MyGame extends VariableFrameRateGame
 	public void loadTextures()
 	{	
 		ghostT = new TextureImage("redDolphin.jpg");
-		doltx = new TextureImage("Dolphin_HighPolyUV.png");
-		earthx = new TextureImage("earth.jpg");
-		jupiterx = new TextureImage("jupiter.jpg");
-		saturnx = new TextureImage("saturn.jpg");
-		neptunex = new TextureImage("neptune.jpg");
-		hills = new TextureImage("hills.jpg");
-		//grass = new TextureImage("grass.jpg");
+		carx = new TextureImage("car2.jpg");
+		avatarTwox = new TextureImage("car.jpg");
+		hills = new TextureImage("hills3.jpg");
 		desert = new TextureImage("desert.jpg");
+		coinX = new TextureImage("coin.jpg");
+		coinTwoX = new TextureImage("coin.jpg");
 	}
 
 	@Override
@@ -122,110 +144,93 @@ public class MyGame extends VariableFrameRateGame
 	{	
 		Matrix4f initialTranslation, initialRotation, initialScale;
 
-		// utilize the script for initializations
-		ScriptEngineManager factory = new ScriptEngineManager();
-		java.util.List<ScriptEngineFactory> list = factory.getEngineFactories();
-		jsEngine = factory.getEngineByName("js");
-		scriptFile = new File("assets/scripts/init.js");
-		this.runScript(scriptFile);
-		earthLocX = ((double)(jsEngine.get("earthLocX")));
-		earthLocZ = ((double)(jsEngine.get("earthLocZ")));
-		jupiterLocX = ((double)(jsEngine.get("jupiterLocX")));
-		jupiterLocZ = ((double)(jsEngine.get("jupiterLocZ")));
-		saturnLocX = ((double)(jsEngine.get("saturnLocX")));
-		saturnLocZ = ((double)(jsEngine.get("saturnLocZ")));
-		neptuneLocX = ((double)(jsEngine.get("neptuneLocX")));
-		neptuneLocZ = ((double)(jsEngine.get("neptuneLocZ")));
-		float childPlantsScale = ((Double)(jsEngine.get("childPlantsScale"))).floatValue();
-		float planetsScale = ((Double)(jsEngine.get("planetsScale"))).floatValue();
 
 		// build dolphin avatar
-		avatar = new GameObject(GameObject.root(), dolS, doltx);
-		initialTranslation = (new Matrix4f()).translation(-1f,1f,1f);
+		// use avatarS for Imported Model and avaS for Animated Model
+		avatar = new GameObject(GameObject.root(), avatarS , carx); 
+		initialTranslation = (new Matrix4f()).translation(0f,0.5f, -10f);
 		avatar.setLocalTranslation(initialTranslation);
-		initialRotation = (new Matrix4f()).rotationY((float)java.lang.Math.toRadians(90.0f));
+		initialRotation = (new Matrix4f()).rotationY((float)java.lang.Math.toRadians(0.0f));
 		avatar.setLocalRotation(initialRotation);
 
+		avatarTwo = new GameObject(GameObject.root(), avaTwoS, avatarTwox);
+		initialTranslation = (new Matrix4f()).translation(0f,0f,-12f);
+		avatarTwo.setLocalTranslation(initialTranslation);
+		initialRotation = (new Matrix4f()).rotationY((float)java.lang.Math.toRadians(90.0f));
+		avatarTwo.setLocalRotation(initialRotation);
+
+		coin = new GameObject(GameObject.root(), coinS, coinX);
+		initialTranslation = (new Matrix4f()).translation(0f,.5f,-11f);
+		coin.setLocalTranslation(initialTranslation);
+		initialRotation = (new Matrix4f()).rotationZ((float)java.lang.Math.toRadians(90.0f));
+		coin.setLocalRotation(initialRotation);
+		initialScale = (new Matrix4f()).scaling(0.5f);
+		coin.setLocalScale(initialScale);
+		(coin.getRenderStates()).disableRendering();
+
+		coinTwo = new GameObject(GameObject.root(), coinTwoS, coinTwoX);
+		initialTranslation = (new Matrix4f()).translation(0f,.5f, 11f);
+		coinTwo.setLocalTranslation(initialTranslation);
+		initialRotation = (new Matrix4f()).rotationZ((float)java.lang.Math.toRadians(90.0f));
+		coinTwo.setLocalRotation(initialRotation);
+		initialScale = (new Matrix4f()).scaling(0.5f);
+		coinTwo.setLocalScale(initialScale);
+
+		coinThree = new GameObject(GameObject.root(), coinTwoS, coinTwoX);
+		initialTranslation = (new Matrix4f()).translation(-14f,.5f, 0f);
+		coinThree.setLocalTranslation(initialTranslation);
+		initialRotation = (new Matrix4f()).rotationX((float)java.lang.Math.toRadians(90.0f));
+		coinThree.setLocalRotation(initialRotation);
+		initialScale = (new Matrix4f()).scaling(0.5f);
+		coinThree.setLocalScale(initialScale);
+
+		coinFour = new GameObject(GameObject.root(), coinS, coinX);
+		initialTranslation = (new Matrix4f()).translation(14f,.5f, 0f);
+		coinFour.setLocalTranslation(initialTranslation);
+		initialRotation = (new Matrix4f()).rotationX((float)java.lang.Math.toRadians(90.0f));
+		coinFour.setLocalRotation(initialRotation);
+		initialScale = (new Matrix4f()).scaling(0.5f);
+		coinFour.setLocalScale(initialScale);
+
 		// build child objects for the avatar. set rendering state to false.
-		childEarth = new GameObject(GameObject.root(), sphereS, earthx);
-		initialTranslation = (new Matrix4f()).translation(.1f,0f,-1.1f);
-		initialScale = (new Matrix4f()).scaling(childPlantsScale);
-		childEarth.setLocalTranslation(initialTranslation);
-		childEarth.setLocalScale(initialScale);
-		childEarth.setParent(avatar);
-		childEarth.propagateTranslation(true);
-		childEarth.propagateRotation(true);
-		childEarth.applyParentRotationToPosition(true);
-		(childEarth.getRenderStates()).disableRendering();
+		childCoinTwo = new GameObject(GameObject.root(), coinS, coinX);
+		initialTranslation = (new Matrix4f()).translation(0.1f,0.25f,-1.1f);
+		initialRotation = (new Matrix4f()).rotationX((float)java.lang.Math.toRadians(90.0f));
+		initialScale = (new Matrix4f()).scaling(0.2f);
+		childCoinTwo.setLocalTranslation(initialTranslation);
+		childCoinTwo.setLocalScale(initialScale);
+		childCoinTwo.setLocalRotation(initialRotation);
+		childCoinTwo.setParent(avatar);
+		childCoinTwo.propagateTranslation(true);
+		childCoinTwo.propagateRotation(true);
+		childCoinTwo.applyParentRotationToPosition(true);
+		(childCoinTwo.getRenderStates()).disableRendering();
 
-		childJupiter = new GameObject(GameObject.root(), sphereS, jupiterx);
-		initialTranslation = (new Matrix4f()).translation(.05f,0f,-1.1f);
-		initialScale = (new Matrix4f()).scaling(childPlantsScale);
-		childJupiter.setLocalTranslation(initialTranslation);
-		childJupiter.setLocalScale(initialScale);
-		childJupiter.setParent(avatar);
-		childJupiter.propagateTranslation(true);
-		childJupiter.propagateRotation(true);
-		childJupiter.applyParentRotationToPosition(true);
-		(childJupiter.getRenderStates()).disableRendering();
+		childCoinThree = new GameObject(GameObject.root(), coinS, coinX);
+		initialTranslation = (new Matrix4f()).translation(0f,0.25f,-1.1f);
+		initialRotation = (new Matrix4f()).rotationX((float)java.lang.Math.toRadians(90.0f));
+		initialScale = (new Matrix4f()).scaling(0.2f);
+		childCoinThree.setLocalTranslation(initialTranslation);
+		childCoinThree.setLocalRotation(initialRotation);
+		childCoinThree.setLocalScale(initialScale);
+		childCoinThree.setParent(avatar);
+		childCoinThree.propagateTranslation(true);
+		childCoinThree.propagateRotation(true);
+		childCoinThree.applyParentRotationToPosition(true);
+		(childCoinThree.getRenderStates()).disableRendering();
 
-		childNeptune = new GameObject(GameObject.root(), sphereS, neptunex);
-		initialTranslation = (new Matrix4f()).translation(-0.05f,0f,-1.1f);
-		initialScale = (new Matrix4f()).scaling(childPlantsScale);
-		childNeptune.setLocalTranslation(initialTranslation);
-		childNeptune.setLocalScale(initialScale);
-		childNeptune.setParent(avatar);
-		childNeptune.propagateTranslation(true);
-		childNeptune.propagateRotation(true);
-		childNeptune.applyParentRotationToPosition(true);
-		(childNeptune.getRenderStates()).disableRendering();
-
-		childSaturn = new GameObject(GameObject.root(), sphereS, saturnx);
-		initialTranslation = (new Matrix4f()).translation(-0.1f,0f,-1.1f);
-		initialScale = (new Matrix4f()).scaling(childPlantsScale);
-		childSaturn.setLocalRotation(initialRotation);
-		childSaturn.setLocalTranslation(initialTranslation);
-		childSaturn.setLocalScale(initialScale);
-		childSaturn.setParent(avatar);
-		childSaturn.propagateTranslation(true);
-		childSaturn.propagateRotation(true);
-		childSaturn.applyParentRotationToPosition(true);
-		(childSaturn.getRenderStates()).disableRendering();
-
-
-		// build earth in random location with random scale
-		float randomX = generateRandomFloat(-8.0f, 8.0f);
-		float randomZ = generateRandomFloat(-8.0f, 8.0f);
-		float randomScale = generateRandomFloat(0.10f, 0.50f);
-		earth = new GameObject(GameObject.root(), sphereS, earthx);
-		initialTranslation = (new Matrix4f()).translation((float)earthLocX,0.5f,(float)earthLocZ);
-		earth.setLocalTranslation(initialTranslation);
-		initialScale = (new Matrix4f()).scaling(planetsScale);
-		earth.setLocalScale(initialScale);
-
-		// build jupiter in random location with random scale
-		randomScale = generateRandomFloat(0.10f, 0.40f);
-		jupiter = new GameObject(GameObject.root(), sphereS, jupiterx);
-		initialTranslation = (new Matrix4f()).translation((float)jupiterLocX,0.5f,(float)jupiterLocZ);
-		jupiter.setLocalTranslation(initialTranslation);
-		initialScale = (new Matrix4f()).scaling(planetsScale);
-		jupiter.setLocalScale(initialScale);
-
-		// build saturn in random location with random scale
-		randomScale = generateRandomFloat(0.10f, 0.40f);
-		saturn = new GameObject(GameObject.root(), sphereS, saturnx);
-		initialTranslation = (new Matrix4f()).translation((float)saturnLocX,0.5f,(float)saturnLocZ);
-		saturn.setLocalTranslation(initialTranslation);
-		initialScale = (new Matrix4f()).scaling(planetsScale);
-		saturn.setLocalScale(initialScale);
-
-		// build neptune in random location with random scale
-		randomScale = generateRandomFloat(0.10f, 0.40f);
-		neptune = new GameObject(GameObject.root(), sphereS, neptunex);
-		initialTranslation = (new Matrix4f()).translation((float)neptuneLocX,0.5f,(float)neptuneLocZ);
-		neptune.setLocalTranslation(initialTranslation);
-		initialScale = (new Matrix4f()).scaling(planetsScale);
-		neptune.setLocalScale(initialScale);
+		childCoinFour = new GameObject(GameObject.root(), coinS, coinX);
+		initialTranslation = (new Matrix4f()).translation(-0.1f,0.25f,-1.1f);
+		initialRotation = (new Matrix4f()).rotationX((float)java.lang.Math.toRadians(90.0f));
+		initialScale = (new Matrix4f()).scaling(0.2f);
+		childCoinFour.setLocalTranslation(initialTranslation);
+		childCoinFour.setLocalRotation(initialRotation);
+		childCoinFour.setLocalScale(initialScale);
+		childCoinFour.setParent(avatar);
+		childCoinFour.propagateTranslation(true);
+		childCoinFour.propagateRotation(true);
+		childCoinFour.applyParentRotationToPosition(true);
+		(childCoinFour.getRenderStates()).disableRendering();
 
 		// add X,Y,-Z axes
 		x = new GameObject(GameObject.root(), linxS);
@@ -239,14 +244,13 @@ public class MyGame extends VariableFrameRateGame
 		(z.getRenderStates()).enableRendering();
 
 		// build terraiun object
-		//terr = new GameObject(GameObject.root(), terrS, grass);
 		terr = new GameObject(GameObject.root(), terrS, desert);
 		initialTranslation = (new Matrix4f()).translation(0f,0f,0f);
 		terr.setLocalTranslation(initialTranslation);
-		//initialScale = (new Matrix4f()).scaling(20.0f,1.0f, 20.0f);
-		initialScale = (new Matrix4f()).scaling(30.0f, 1.0f, 30.0f):
+		initialScale = (new Matrix4f()).scaling(20.0f,1.0f, 20.0f);
 		terr.setLocalScale(initialScale);
-		terr.setHeightMap(hills);
+		terr.getRenderStates().hasLighting(true);
+		terr.setHeightMap(hills); //THIS IS FOR TERRAIN PLANE
 	}
 
 	@Override
@@ -277,12 +281,8 @@ public class MyGame extends VariableFrameRateGame
 	@Override
 	public void loadSkyBoxes(){
 		fluffyClouds = (engine.getSceneGraph()).loadCubeMap("fluffyClouds");
-		//yellowClouds = (engine.getSceneGraph()).loadCubeMap("yellowClouds");
-		//lakeIslands = (engine.getSceneGraph()).loadCubeMap("lakeIslands");
 		desertScape = (engine.getSceneGraph()).loadCubeMap("desertScape");
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
-		//(engine.getSceneGraph()).setActiveSkyBoxTexture(yellowClouds);
-		//(engine.getSceneGraph()).setActiveSkyBoxTexture(lakeIslands);
 		(engine.getSceneGraph()).setActiveSkyBoxTexture(desertScape);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
 	}
@@ -303,22 +303,19 @@ public class MyGame extends VariableFrameRateGame
 		dolphinLife = ((Double)(jsEngine.get("dolphinLife"))).floatValue();
 		minDistance = ((Double)(jsEngine.get("minDistance"))).floatValue();
 		maxDistance = ((Double)(jsEngine.get("maxDistance"))).floatValue();
-		itemCount = ((int)(jsEngine.get("itemCount")));
-		maxItemCnt = ((int)(jsEngine.get("maxItemCnt")));
-		earthCollected = ((boolean)(jsEngine.get("earthCollected")));
-		jupiterCollected = ((boolean)(jsEngine.get("jupiterCollected")));
-		saturnCollected = ((boolean)(jsEngine.get("saturnCollected")));
-		neptuneCollected = ((boolean)(jsEngine.get("neptuneCollected")));
+		coinCount = ((int)(jsEngine.get("coinCount")));
+		maxCoinCount = ((int)(jsEngine.get("maxCoinCount")));
+		float avatarScale = ((Double)(jsEngine.get("avatarScale"))).floatValue();
 
-		rcY = new RotationController(engine, new Vector3f(0,1,0), 0.001f);
 		rcZ = new RotationController(engine, new Vector3f(0,0,1), 0.001f);
 		bc = new BounceController();
-		rcY.toggle();
 		rcZ.toggle();
 		bc.toggle();
-		(engine.getSceneGraph()).addNodeController(rcY);
 		(engine.getSceneGraph()).addNodeController(rcZ);
 		(engine.getSceneGraph()).addNodeController(bc);
+		rcZ.addTarget(childCoinTwo);
+		rcZ.addTarget(childCoinThree);
+		rcZ.addTarget(childCoinFour);
 
 		//----------------- adding light -----------------
 		Light.setGlobalAmbient(.5f, .5f, .5f);
@@ -328,8 +325,43 @@ public class MyGame extends VariableFrameRateGame
 		(engine.getSceneGraph()).addLight(light);
 
 		// ----------------- initialize camera ----------------
-		Camera camera = (engine.getRenderSystem()).getViewport("LEFT").getCamera(); 
-  		//orbitController = new CameraOrbit3D(camera, avatar, engine); 
+		Camera camera = (engine.getRenderSystem()).getViewport("LEFT").getCamera();
+
+		//------------- PHYSICS --------------
+		//     --- initialize physics system ---
+		String enginePath = "tage.physics.JBullet.JBulletPhysicsEngine";
+		float[] gravity = {0f, -10f, 0f};
+		physicsEngine = PhysicsEngineFactory.createPhysicsEngine(enginePath);
+		physicsEngine.initSystem();
+		physicsEngine.setGravity(gravity);
+
+		//     --- create physics world ---
+		float mass = 1.0f;
+		float up[] = {0,1,0};
+		double[] tempTransform;
+
+		Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
+		float halfExtents[] = {0.5f, 0.5f, 0.5f};
+		tempTransform = toDoubleArray(translation.get(vals));
+		avatarP = physicsEngine.addBoxObject(0, mass, tempTransform, halfExtents);
+		avatarP.setBounciness(0.0f);
+		avatar.setPhysicsObject(avatarP);
+		Matrix4f initialScale = (new Matrix4f()).scaling(avatarScale);
+		avatar.setLocalScale(initialScale);
+
+		translation = new Matrix4f(avatarTwo.getLocalTranslation());
+		tempTransform = toDoubleArray(translation.get(vals));
+		avatarP = physicsEngine.addBoxObject(1, mass, tempTransform, halfExtents);
+		avatarP.setBounciness(0.0f);
+		avatarTwo.setPhysicsObject(avatarP);
+		initialScale = (new Matrix4f()).scaling(avatarScale);
+		avatarTwo.setLocalScale(initialScale);
+
+		translation = terr.getLocalTranslation();
+		tempTransform = toDoubleArray(translation.get(vals));
+		planeP = physicsEngine.addStaticPlaneObject(2, tempTransform, up, 0.0f);
+		planeP.setBounciness(0.0f);
+		terr.setPhysicsObject(planeP);
 
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
@@ -404,24 +436,105 @@ public class MyGame extends VariableFrameRateGame
 								   InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 			}
 		}
+		/*------------- AUDIO SECTION ---------*/
+		initAudio();
+	}
+	
+	/* Initialize Audio Sounds*/
+	public void initAudio(){
+		AudioResource resource1, resource2, resource3, resource4, resource5, resource6, resource7, resource8, resource9, resource10, resource11, resource12, resource13;
+		audioMgr = AudioManagerFactory.createAudioManager("tage.audio.joal.JOALAudioManager");
+		if(!audioMgr.initialize()){
+			System.out.println("Audio Manager failed to initialize");
+			return;
+		}
+		resource1 = audioMgr.createAudioResource("assets/sounds/title.wav", AudioResourceType.AUDIO_STREAM);
+		//resource2 = audioMgr.createAudioResource("assets/sounds/game.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource3 = audioMgr.createAudioResource("assets/sounds/coin.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource4 = audioMgr.createAudioResource("assets/sounds/lap.wav", AudioResourceType.AUDIO_SAMPLE);
+		/**resource5 = audioMgr.createAudioResource("assets/sounds/levelup.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource6 = audioMgr.createAudioResource("assets/sounds/lowhealth.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource7 = audioMgr.createAudioResource("assets/sounds/gotitem.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource8 = audioMgr.createAudioResource("assets/sounds/sboom.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource9 = audioMgr.createAudioResource("assets/sounds/thud1.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource10 = audioMgr.createAudioResource("assets/sounds/weirdhit.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource11 = audioMgr.createAudioResource("assets/sounds/finalLap.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource12 = audioMgr.createAudioResource("assets/sounds/winner.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource13 = audioMgr.createAudioResource("assets/sounds/bluecoin.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource14 = audioMgr.createAudioResource("assets/sounds/gameover.wav", AudioResourceType.AUDIO_SAMPLE);
+		**/
+		
+		titleSound = new Sound(resource1, SoundType.SOUND_MUSIC, 100, true);
+		//gameSound = new Sound(resource2, SoundType.SOUND_EFFECT, 100, true);
+		coinSound = new Sound(resource3, SoundType.SOUND_EFFECT, 100, true);
+	/**	lapSound = new Sound(resource4, SoundType.SOUND_EFFECT, 100, true);
+		levelupSound = new Sound(resource5, SoundType.SOUND_EFFECT, 100, true);
+		lowhealthSound = new Sound(resource6, SoundType.SOUND_EFFECT, 100, true);
+		gotitemSound = new Sound(resource7, SoundType.SOUND_EFFECT, 100, true);
+		sboomSound = new Sound(resource8, SoundType.SOUND_EFFECT, 100, true);
+		thud1Sound = new Sound(resource9, SoundType.SOUND_EFFECT, 100, true);
+		weirdhitSound = new Sound(resource10, SoundType.SOUND_EFFECT, 100, true);
+		finalLapSound = new Sound(resource11, SoundType.SOUND_EFFECT, 100, true);
+		winnerSound = new Sound(resource12, SoundType.SOUND_EFFECT, 100, true);
+		gameoverSound = new Sound(resource13, SoundType.SOUND_EFFECT, 100, true);
+		
+		**/
+		
+		titleSound.initialize(audioMgr);
+		/**gameSound.initialize(audioMgr);**/
+		coinSound.initialize(audioMgr);
+		titleSound.setMaxDistance(10.0f);
+		titleSound.setMinDistance(0.5f);
+		titleSound.setRollOff(5.0f);
+		/**gameSound.setMaxDistance(10.0f);
+		gameSound.setMinDistance(0.5f);
+		gameSound.setRollOff(5.0f);**/
+		
+		coinSound.setMaxDistance(10.0f);
+		coinSound.setMinDistance(0.5f);
+		coinSound.setRollOff(5.0f);
+		
+	/*	lapSound.setMaxDistance(10.0f);
+		lapSound.setMinDistance(0.5f);
+		lapSound.setRollOff(5.0f);*/
+		
+		titleSound.setLocation(avatar.getWorldLocation());
+		//gameSound.setLocation(terr.getWorldLocation());
+		//coinSound.setLocation(coin.getWorldLocation());
+		/**coinSound.setLocation(coinTwo.getWorldLocation());
+		coinSound.setLocation(coinThree.getWorldLocation());
+		coinSound.setLocation(coinFour.getWorldLocation());**/
+		setEarParameters();
+		
+		titleSound.play();
+		//gameSound.play();
+		//coinSound.play();
+	}
+	
+	/*------- Set Ear Parameters ---------*/
+	public void setEarParameters(){
+		Camera cam = (engine.getRenderSystem()).getViewport("LEFT").getCamera();
+		audioMgr.getEar().setLocation(avatar.getWorldLocation());
+		audioMgr.getEar().setOrientation(cam.getN(), new Vector3f(0.0f, 1.0f, 0.0f));
+		
 	}
 
 	@Override
 	public void update()
 	{	
-		didAvatarCollectItem();
+		// IGNORE FOR NOW
+		// didAvatarCollectItem();
 
 		elapsedTime = System.currentTimeMillis() - prevTime;
 		prevTime = System.currentTimeMillis();
 		deltaTime = elapsedTime / 1000.0;
-		dolphinLife -= deltaTime;
 		int health = (int) dolphinLife;
 
 		// build and set HUD
 		int elapsTimeSec = Math.round((float)(System.currentTimeMillis()-startTime)/1000.0f);
 		String elapsTimeStr = Integer.toString(elapsTimeSec);
-		String itemCnt = "   Score = " + Integer.toString(itemCount);
-		String lifeCnt = " Health = " + Integer.toString(health);
+		String itemCnt = "   Item Count = " + Integer.toString(coinCount);
+		String lifeCnt = " Lap = " + Integer.toString(lapCount);
 		String dispStr1 = "Time = " + elapsTimeStr + itemCnt + lifeCnt;
 		String dispStr2 = "Avatar position = "
 			+ (avatar.getWorldLocation()).x()
@@ -436,29 +549,88 @@ public class MyGame extends VariableFrameRateGame
 		(engine.getHUDmanager()).setHUD1(dispStr1, hud1Color, 15, 15);
 		(engine.getHUDmanager()).setHUD2(dispStr2, hud2Color, relativeHUD2Pos, 15);
 		
-		if(dolphinLife <= 0.0f && itemCount < maxItemCnt) 
-		{
-			System.out.println("YOU LOST!");
-			super.shutdown();
-			System.exit(0);
-			
-		}
-		if(dolphinLife > 0.0f && itemCount >= maxItemCnt) 
-		{
-			System.out.println("YOU WON!");
-			super.shutdown();
-			System.exit(0);
-		}
-
-		// update inputs and orbit controller camera
+		// update inputs
 		im.update((float)elapsedTime);
+	
+		// update physics
+		if (running)
+		{	
+			Matrix4f mat = new Matrix4f();
+			Matrix4f mat2 = new Matrix4f().identity();
+			//Matrix4f mat3 = new Matrix4f().identity();
+			checkForCollisions();
+			physicsEngine.update((float)elapsedTime);
+			for (GameObject go:engine.getSceneGraph().getGameObjects())
+			{	if (go.getPhysicsObject() != null)
+				{	
+					// Set the phsyics obj translation to the graphics obj translation
+					mat.set(toFloatArray(go.getPhysicsObject().getTransform()));
+					mat2.set(3,0,mat.m30()); mat2.set(3,1,mat.m31()); mat2.set(3,2,mat.m32());
+					go.setLocalTranslation(mat2);
+					
+					// Set the phsyics obj rotation to the graphics obj rotation
+					mat2.set(2,0,mat.m20()); mat2.set(2,1,mat.m21()); mat2.set(2,2,mat.m22());
+					mat2.set(1,0,mat.m10()); mat2.set(1,1,mat.m11()); mat2.set(1,2,mat.m12());
+					AxisAngle4f aa = new AxisAngle4f();
+      				mat2.getRotation(aa);
+					Matrix4f rotMatrix = new Matrix4f();
+      				rotMatrix.rotation(aa);
+					go.setLocalRotation(rotMatrix);
+				}
+			}
+		}
 		orbitController.setRotationAmount((float) elapsedTime);
-		// update altitude of dolphin based on height map
-		Vector3f loc = avatar.getWorldLocation();
-		float height = terr.getHeight(loc.x(), loc.z());
-		avatar.setLocalLocation(new Vector3f(loc.x(), height, loc.z()));
-		orbitController.updateCameraPosition(); 
+		orbitController.updateCameraPosition();
+		//avaS.updateAnimation(); 
+		
+		// update Sound
+		titleSound.setLocation(avatar.getWorldLocation());
+		//gameSound.setLocation(terr.getWorldLocation());
+		//coinSound.setLocation(coin.getWorldLocation());
+		/**coinSound.setLocation(coinTwo.getWorldLocation());
+		coinSound.setLocation(coinThree.getWorldLocation());
+		coinSound.setLocation(coinFour.getWorldLocation());**/
+		setEarParameters();
+		
 		processNetworking((float)elapsedTime);
+	}
+ 
+	private void checkForCollisions()
+	{	com.bulletphysics.dynamics.DynamicsWorld dynamicsWorld;
+		com.bulletphysics.collision.broadphase.Dispatcher dispatcher;
+		com.bulletphysics.collision.narrowphase.PersistentManifold manifold;
+		com.bulletphysics.dynamics.RigidBody object1, object2;
+		com.bulletphysics.collision.narrowphase.ManifoldPoint contactPoint;
+
+		dynamicsWorld = ((JBulletPhysicsEngine)physicsEngine).getDynamicsWorld();
+		dispatcher = dynamicsWorld.getDispatcher();
+		int manifoldCount = dispatcher.getNumManifolds();
+		for (int i=0; i<manifoldCount; i++)
+		{	manifold = dispatcher.getManifoldByIndexInternal(i);
+			object1 = (com.bulletphysics.dynamics.RigidBody)manifold.getBody0();
+			object2 = (com.bulletphysics.dynamics.RigidBody)manifold.getBody1();
+			JBulletPhysicsObject obj1 = JBulletPhysicsObject.getJBulletPhysicsObject(object1);
+			JBulletPhysicsObject obj2 = JBulletPhysicsObject.getJBulletPhysicsObject(object2);
+			for (int j = 0; j < manifold.getNumContacts(); j++)
+			{	contactPoint = manifold.getContactPoint(j);
+				if (contactPoint.getDistance() < 0.0f)
+				{	//System.out.println("---- hit between OBJ:" + obj1.getUID() + " and OBJ:" + obj2.getUID());
+					break;
+				}
+			}
+		}
+	}
+
+	public void addPhysicsToObject(GameObject obj)
+	{
+		Matrix4f objTranslation = new Matrix4f(obj.getLocalTranslation());
+		float halfExtents[] = {1.0f, 1.0f, 1.0f};
+		double[] tempTransform;
+		float mass = 1.0f;
+
+		tempTransform = toDoubleArray(objTranslation.get(vals));
+		PhysicsObject objP = physicsEngine.addBoxObject(physicsEngine.nextUID(), mass, tempTransform, halfExtents);
+		obj.setPhysicsObject(objP);
 	}
 
 	/* Random Float Generator. Min and Max are inclusive. */
@@ -476,65 +648,85 @@ public class MyGame extends VariableFrameRateGame
 	public void didAvatarCollectItem()
 	{
 		Vector3f avaLoc = avatar.getWorldLocation();
-		Vector3f earthLoc = earth.getWorldLocation();
-		Vector3f jupiterLoc = jupiter.getWorldLocation();
-		Vector3f saturnLoc = saturn.getWorldLocation();
-		Vector3f neptuneLoc = neptune.getWorldLocation();
+		Vector3f coinLoc = coin.getWorldLocation();
+		Vector3f coinTwoLoc = coinTwo.getWorldLocation();
+		Vector3f coinThreeLoc = coinThree.getWorldLocation();
+		Vector3f coinFourLoc = coinFour.getWorldLocation();
 
-		float camEathhDistance = earthLoc.distance(avaLoc);
-		float camJupiterDistance = jupiterLoc.distance(avaLoc);
-		float camSaturnDistance = saturnLoc.distance(avaLoc);
-		float camNeptuneDistance = neptuneLoc.distance(avaLoc);
+		float distance = coinLoc.distance(avaLoc);
+		float distanceTwo = coinTwoLoc.distance(avaLoc);
+		float distanceThree = coinThreeLoc.distance(avaLoc);
+		float distanceFour = coinFourLoc.distance(avaLoc);
 
-		if(camEathhDistance < minDistance && !earthCollected)
+		if(distance < minDistance)
 		{
-			if(itemCount < maxItemCnt) 
+			if (coinCount == 3)
 			{
-				itemCount++;
-				(childEarth.getRenderStates()).enableRendering();
-				rcY.addTarget(earth);
-				rcY.addTarget(childEarth);
-				bc.addTarget(earth);
-				earthCollected = true;
+				coinCount = 1;
+				lapCount++;
+				//lapSound.setLocation(lapCount);
+				//lapSound.play();
+				coinOneCollected = true;
+				coinTwoCollected = false;
+				coinThreeCollected = false;
+				coinFourCollected = false;
+				(childCoinTwo.getRenderStates()).disableRendering();
+				(childCoinThree.getRenderStates()).disableRendering();
+				(childCoinFour.getRenderStates()).disableRendering();
+				(coin.getRenderStates()).disableRendering();
+				(coinTwo.getRenderStates()).enableRendering();
+				(coinThree.getRenderStates()).enableRendering();
+				(coinFour.getRenderStates()).enableRendering();
+				coinSound.setLocation(coin.getWorldLocation());
 			}			
 		}
-		if(camJupiterDistance < minDistance && !jupiterCollected)
+
+		if(distanceTwo < minDistance && !coinTwoCollected)
 		{
-			if(itemCount < maxItemCnt) 
+			if(coinCount < maxCoinCount) 
 			{
-				itemCount++;
-				(childJupiter.getRenderStates()).enableRendering();
-				rcY.addTarget(jupiter);
-				rcY.addTarget(childJupiter);
-				bc.addTarget(jupiter);
-				jupiterCollected = true;
+				coinCount++;
+				(childCoinTwo.getRenderStates()).enableRendering();
+				(coinTwo.getRenderStates()).disableRendering();
+				coinTwoCollected = true;
+				coinSound.setLocation(coinTwo.getWorldLocation());
+				coinSound.play();
+			}else{
+				coinSound.stop();
+			}
+		}
+
+		if(distanceThree < minDistance && !coinThreeCollected)
+		{
+			if(coinCount < maxCoinCount) 
+			{
+				coinCount++;
+				(childCoinThree.getRenderStates()).enableRendering();
+				(coinThree.getRenderStates()).disableRendering();
+				coinThreeCollected = true;
+				coinSound.setLocation(coinThree.getWorldLocation());
+				//coinSound.play();
 			}			
 		}
-		if(camSaturnDistance < minDistance && !saturnCollected)
-		{
-			if(itemCount < maxItemCnt) 
-			{
-				itemCount++;
-				(childSaturn.getRenderStates()).enableRendering();
-				rcY.addTarget(saturn);
-				rcY.addTarget(childSaturn);
-				bc.addTarget(saturn);
-				saturnCollected = true;
 			
-			}			
-		}
-		if(camNeptuneDistance < minDistance && !neptuneCollected)
+		if(distanceFour < minDistance && !coinFourCollected)
 		{
-			if(itemCount < maxItemCnt) 
+			if(coinCount < maxCoinCount) 
 			{
-				itemCount++;
-				(childNeptune.getRenderStates()).enableRendering();
-				rcZ.addTarget(neptune);
-				rcZ.addTarget(childNeptune);
-				bc.addTarget(neptune);
-				neptuneCollected = true;
+				coinCount++;
+				(childCoinFour.getRenderStates()).enableRendering();
+				(coinFour.getRenderStates()).disableRendering();
+				coinFourCollected = true;
+				coinSound.setLocation(coinFour.getWorldLocation());
+				//coinSound.play();
 			}			
 		}
+
+		if (coinCount == 3)
+		{
+			(coin.getRenderStates()).enableRendering();
+		}
+
 	}
 
 	private void runScript(File scriptFile)
@@ -552,6 +744,28 @@ public class MyGame extends VariableFrameRateGame
 		catch (NullPointerException e4)
 		{	System.out.println ("Null ptr exception reading " + scriptFile + e4);
 		}
+	}
+
+	// ------------------ UTILITY FUNCTIONS used by physics
+
+	private float[] toFloatArray(double[] arr)
+	{	if (arr == null) return null;
+		int n = arr.length;
+		float[] ret = new float[n];
+		for (int i = 0; i < n; i++)
+		{	ret[i] = (float)arr[i];
+		}
+		return ret;
+	}
+ 
+	private double[] toDoubleArray(float[] arr)
+	{	if (arr == null) return null;
+		int n = arr.length;
+		double[] ret = new double[n];
+		for (int i = 0; i < n; i++)
+		{	ret[i] = (double)arr[i];
+		}
+		return ret;
 	}
 
 	// ---------- NETWORKING SECTION ----------------
@@ -586,8 +800,6 @@ public class MyGame extends VariableFrameRateGame
 			protClient.processPackets();
 	}
 
-	
-
 	public void setIsConnected(boolean value) { this.isClientConnected = value; }
 	
 	private class SendCloseConnectionPacketAction extends AbstractInputAction
@@ -599,36 +811,9 @@ public class MyGame extends VariableFrameRateGame
 		}
 	}
 
-	@Override
-	public void keyPressed(KeyEvent e)
-	{	
-		switch(e.getKeyCode()){
-			case KeyEvent.VK_1:
-			{
-				(engine.getSceneGraph()).setActiveSkyBoxTexture(fluffyClouds);
-				//(engine.getSceneGraph()).setActiveSkyBoxTexture(yellowClouds);
-				(engine.getSceneGraph()).setSkyBoxEnabled(true);
-				break;
-			}
-			case KeyEvent.VK_2:
-			{
-				//(engine.getSceneGraph()).setActiveSkyBoxTexture(lakeIslands);
-				(engine.getSceneGraph()).setActiveSkyBoxTexture(desertScape);
-				(engine.getSceneGraph()).setSkyBoxEnabled(true);
-				break;
-			}
-			case KeyEvent.VK_3:
-			{
-				(engine.getSceneGraph()).setSkyBoxEnabled(false);
-				break;
-			}
-
-		}
-		super.keyPressed(e);
-	}
-
 	// ------------------ Additional Setters and Getters for new game attributes ------------------------------
 	public GameObject getAvatar() { return avatar; }
+	public AnimatedShape getAvatarShape() { return avaS; }
 	public double getDeltaTime() { return this.deltaTime; }
 	public float getMaxDistance() { return this.maxDistance; }
 	public void setAvatarPosition(Vector3f location) 
