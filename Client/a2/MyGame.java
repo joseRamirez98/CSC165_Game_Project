@@ -59,7 +59,8 @@ public class MyGame extends VariableFrameRateGame
 
 	/* Audio Sound*/
 	private IAudioManager audioMgr;
-	private Sound coinSound, blueCoinSound,nascarRacersExtSound, NascarRacersThemeSound,finalLapSound, gameSound, gotitemSound, lapSound, levelupSound, lowhealthSound, sboomSound, gameoverSound, thud1Sound, titleSound, weirdhitSound, winnerSound;
+	private Sound coinSound, blueCoinSound,nascarRacersExtSound, NascarRacersThemeSound, accelerationSound, finalLapSound, gameSound, gotitemSound, lapSound, levelupSound, lowhealthSound, sboomSound, gameoverSound, thud1Sound, titleSound, weirdhitSound, winnerSound;
+	AudioResource resource1, resource2, resource3, resource4, resource5, resource6, resource7, resource8, resource9, resource10, resource11, resource12, resource13, resource14, resource15;
 
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, avatarTwoP, planeP;
@@ -442,7 +443,7 @@ public class MyGame extends VariableFrameRateGame
 	
 	/* Initialize Audio Sounds*/
 	public void initAudio(){
-		AudioResource resource1, resource2, resource3, resource4, resource5, resource6, resource7, resource8, resource9, resource10, resource11, resource12, resource13;
+		//AudioResource resource1, resource2, resource3, resource4, resource5, resource6, resource7, resource8, resource9, resource10, resource11, resource12, resource13, resource14, resource15;
 		audioMgr = AudioManagerFactory.createAudioManager("tage.audio.joal.JOALAudioManager");
 		if(!audioMgr.initialize()){
 			System.out.println("Audio Manager failed to initialize");
@@ -452,37 +453,41 @@ public class MyGame extends VariableFrameRateGame
 		//resource2 = audioMgr.createAudioResource("assets/sounds/game.wav", AudioResourceType.AUDIO_SAMPLE);
 		resource3 = audioMgr.createAudioResource("assets/sounds/coin.wav", AudioResourceType.AUDIO_SAMPLE);
 		resource4 = audioMgr.createAudioResource("assets/sounds/lap.wav", AudioResourceType.AUDIO_SAMPLE);
-		/**resource5 = audioMgr.createAudioResource("assets/sounds/levelup.wav", AudioResourceType.AUDIO_SAMPLE);
-		resource6 = audioMgr.createAudioResource("assets/sounds/lowhealth.wav", AudioResourceType.AUDIO_SAMPLE);
-		resource7 = audioMgr.createAudioResource("assets/sounds/gotitem.wav", AudioResourceType.AUDIO_SAMPLE);
-		resource8 = audioMgr.createAudioResource("assets/sounds/sboom.wav", AudioResourceType.AUDIO_SAMPLE);
-		resource9 = audioMgr.createAudioResource("assets/sounds/thud1.wav", AudioResourceType.AUDIO_SAMPLE);
-		resource10 = audioMgr.createAudioResource("assets/sounds/weirdhit.wav", AudioResourceType.AUDIO_SAMPLE);
+		//resource5 = audioMgr.createAudioResource("assets/sounds/levelup.wav", AudioResourceType.AUDIO_SAMPLE);
+		//resource6 = audioMgr.createAudioResource("assets/sounds/lowhealth.wav", AudioResourceType.AUDIO_SAMPLE);
+		//resource7 = audioMgr.createAudioResource("assets/sounds/gotitem.wav", AudioResourceType.AUDIO_SAMPLE);
+		//resource8 = audioMgr.createAudioResource("assets/sounds/sboom.wav", AudioResourceType.AUDIO_SAMPLE);
+		//resource9 = audioMgr.createAudioResource("assets/sounds/thud1.wav", AudioResourceType.AUDIO_SAMPLE);
+		//resource10 = audioMgr.createAudioResource("assets/sounds/weirdhit.wav", AudioResourceType.AUDIO_SAMPLE);
 		resource11 = audioMgr.createAudioResource("assets/sounds/finalLap.wav", AudioResourceType.AUDIO_SAMPLE);
 		resource12 = audioMgr.createAudioResource("assets/sounds/winner.wav", AudioResourceType.AUDIO_SAMPLE);
-		resource13 = audioMgr.createAudioResource("assets/sounds/bluecoin.wav", AudioResourceType.AUDIO_SAMPLE);
-		resource14 = audioMgr.createAudioResource("assets/sounds/gameover.wav", AudioResourceType.AUDIO_SAMPLE);
-		**/
+		//resource13 = audioMgr.createAudioResource("assets/sounds/bluecoin.wav", AudioResourceType.AUDIO_SAMPLE);
+		resource14 = audioMgr.createAudioResource("assets/sounds/acceleration.wav", AudioResourceType.AUDIO_SAMPLE);
+		//resource15 = audioMgr.createAudioResource("assets/sounds/gameover.wav", AudioResourceType.AUDIO_SAMPLE);
+		
 		
 		titleSound = new Sound(resource1, SoundType.SOUND_MUSIC, 100, true);
 		//gameSound = new Sound(resource2, SoundType.SOUND_EFFECT, 100, true);
 		coinSound = new Sound(resource3, SoundType.SOUND_EFFECT, 100, true);
-	/**	lapSound = new Sound(resource4, SoundType.SOUND_EFFECT, 100, true);
-		levelupSound = new Sound(resource5, SoundType.SOUND_EFFECT, 100, true);
-		lowhealthSound = new Sound(resource6, SoundType.SOUND_EFFECT, 100, true);
-		gotitemSound = new Sound(resource7, SoundType.SOUND_EFFECT, 100, true);
-		sboomSound = new Sound(resource8, SoundType.SOUND_EFFECT, 100, true);
-		thud1Sound = new Sound(resource9, SoundType.SOUND_EFFECT, 100, true);
-		weirdhitSound = new Sound(resource10, SoundType.SOUND_EFFECT, 100, true);
+		accelerationSound = new Sound(resource14, SoundType.SOUND_EFFECT, 100, true);
+		lapSound = new Sound(resource4, SoundType.SOUND_EFFECT, 100, true);
+	//	levelupSound = new Sound(resource5, SoundType.SOUND_EFFECT, 100, true);
+	//	lowhealthSound = new Sound(resource6, SoundType.SOUND_EFFECT, 100, true);
+	//	gotitemSound = new Sound(resource7, SoundType.SOUND_EFFECT, 100, true);
+	//	sboomSound = new Sound(resource8, SoundType.SOUND_EFFECT, 100, true);
+	//	thud1Sound = new Sound(resource9, SoundType.SOUND_EFFECT, 100, true);
+	//	weirdhitSound = new Sound(resource10, SoundType.SOUND_EFFECT, 100, true);
 		finalLapSound = new Sound(resource11, SoundType.SOUND_EFFECT, 100, true);
 		winnerSound = new Sound(resource12, SoundType.SOUND_EFFECT, 100, true);
-		gameoverSound = new Sound(resource13, SoundType.SOUND_EFFECT, 100, true);
+	//	gameoverSound = new Sound(resource13, SoundType.SOUND_EFFECT, 100, true);
 		
-		**/
+		
 		
 		titleSound.initialize(audioMgr);
 		/**gameSound.initialize(audioMgr);**/
 		coinSound.initialize(audioMgr);
+		titleSound.setVolume(20);
+		titleSound.getVolume();
 		titleSound.setMaxDistance(10.0f);
 		titleSound.setMinDistance(0.5f);
 		titleSound.setRollOff(5.0f);
@@ -490,6 +495,8 @@ public class MyGame extends VariableFrameRateGame
 		gameSound.setMinDistance(0.5f);
 		gameSound.setRollOff(5.0f);**/
 		
+		coinSound.setVolume(70);
+		coinSound.getVolume();
 		coinSound.setMaxDistance(10.0f);
 		coinSound.setMinDistance(0.5f);
 		coinSound.setRollOff(5.0f);
@@ -499,6 +506,15 @@ public class MyGame extends VariableFrameRateGame
 		lapSound.setRollOff(5.0f);*/
 		
 		titleSound.setLocation(avatar.getWorldLocation());
+		accelerationSound.initialize(audioMgr);
+		accelerationSound.setVolume(15);
+		accelerationSound.getVolume();
+		accelerationSound.setMaxDistance(10.0f);
+		accelerationSound.setMinDistance(0.5f);
+		accelerationSound.setRollOff(5.0f);
+		accelerationSound.setLocation(avatar.getWorldLocation());
+		accelerationSound.play();
+		
 		//gameSound.setLocation(terr.getWorldLocation());
 		//coinSound.setLocation(coin.getWorldLocation());
 		/**coinSound.setLocation(coinTwo.getWorldLocation());
@@ -508,7 +524,39 @@ public class MyGame extends VariableFrameRateGame
 		
 		titleSound.play();
 		//gameSound.play();
-		//coinSound.play();
+		coinSound.play();
+		accelerationSound.play();
+		lapSound.play();
+		finalLapSound.play();
+		winnerSound.play();
+	}
+	
+	/*-----------Turn off Sound ----------*/
+	
+	public void turnOffSound(){
+		
+		coinSound.release(audioMgr);
+		accelerationSound.release(audioMgr);
+		lapSound.release(audioMgr);
+		finalLapSound.release(audioMgr);
+		winnerSound.release(audioMgr);
+		
+		resource3.unload();
+		resource4.unload();
+		resource11.unload();
+		resource12.unload();
+		resource14.unload();
+		
+		audioMgr.shutdown();
+		
+	}
+	
+	/*---- Exit game-------*/
+	@Override
+	public void shutdown(){
+		turnOffSound();
+		super.shutdown();
+		
 	}
 	
 	/*------- Set Ear Parameters ---------*/
@@ -519,6 +567,23 @@ public class MyGame extends VariableFrameRateGame
 		
 	}
 
+	/*-------Final Lap-------*/
+	public void finalLap(){
+		
+		
+		if(lapCount == 3){
+			
+			lapCount++;
+			addFinalLapSound();
+		}
+		
+	}
+	/*------Finish Line------*/
+	public void finishLine(){
+		
+		addFinishLineSound();
+		shutdown();
+	}
 	@Override
 	public void update()
 	{	
@@ -585,13 +650,18 @@ public class MyGame extends VariableFrameRateGame
 		
 		// update Sound
 		titleSound.setLocation(avatar.getWorldLocation());
+		//titleSound.setVolume(10);
+		//titleSound.getVolume();
+		
+		//coinSound.setVolume(70);
+		//coinSound.getVolume();
 		//gameSound.setLocation(terr.getWorldLocation());
 		//coinSound.setLocation(coin.getWorldLocation());
 		/**coinSound.setLocation(coinTwo.getWorldLocation());
 		coinSound.setLocation(coinThree.getWorldLocation());
 		coinSound.setLocation(coinFour.getWorldLocation());**/
 		setEarParameters();
-		
+	
 		processNetworking((float)elapsedTime);
 	}
  
@@ -639,6 +709,43 @@ public class MyGame extends VariableFrameRateGame
 		Random rand = new Random();
 		return min + rand.nextFloat() * (max - min);
 	}
+	
+	public void addLapSound(){
+		
+		//if(lapCount == 1){
+			//lapCount++;
+			lapSound.initialize(audioMgr);
+			lapSound.setVolume(80);
+			lapSound.getVolume();
+			//lapSound.setMaxDistance(10.0f);
+			//lapSound.setMinDistance(0.5f);
+			//lapSound.setRollOff(5.0f);
+			//lapSound.setLocation(avatar.getWorldLocation());
+			lapSound.play(80, false);
+			
+		/*}else{
+			lapSound.stop();
+		}*/
+		
+	}
+	
+	public void addFinalLapSound(){
+		
+		finalLapSound.initialize(audioMgr);
+		finalLapSound.setVolume(80);
+		finalLapSound.getVolume();
+		finalLapSound.play(80, false);
+		
+	}
+	
+	public void addFinishLineSound(){
+		
+		winnerSound.initialize(audioMgr);
+		winnerSound.setVolume(80);
+		winnerSound.getVolume();
+		winnerSound.play(80, false);
+		
+	}
 
 	/*
 		Determine if the player has collected one of the game objects.
@@ -657,6 +764,11 @@ public class MyGame extends VariableFrameRateGame
 		float distanceTwo = coinTwoLoc.distance(avaLoc);
 		float distanceThree = coinThreeLoc.distance(avaLoc);
 		float distanceFour = coinFourLoc.distance(avaLoc);
+		
+		/*if(lapCount == 1){
+			lapCount++;
+			lapSound.play();
+		}*/
 
 		if(distance < minDistance)
 		{
@@ -664,8 +776,11 @@ public class MyGame extends VariableFrameRateGame
 			{
 				coinCount = 1;
 				lapCount++;
-				//lapSound.setLocation(lapCount);
-				//lapSound.play();
+				addLapSound();
+				
+			//	lapSound.setLocation(avatar.getWorldLocation());
+			//	lapSound.play();
+				
 				coinOneCollected = true;
 				coinTwoCollected = false;
 				coinThreeCollected = false;
@@ -678,7 +793,15 @@ public class MyGame extends VariableFrameRateGame
 				(coinThree.getRenderStates()).enableRendering();
 				(coinFour.getRenderStates()).enableRendering();
 				coinSound.setLocation(coin.getWorldLocation());
-			}			
+				/**coinSound.setVolume(70);
+				coinSound.getVolume();
+				coinSound.play();**/
+
+			}/*else{
+				//coinSound.stop();
+				lapSound.stop();
+			}	*/	
+			//addLapSound();
 		}
 
 		if(distanceTwo < minDistance && !coinTwoCollected)
@@ -690,6 +813,8 @@ public class MyGame extends VariableFrameRateGame
 				(coinTwo.getRenderStates()).disableRendering();
 				coinTwoCollected = true;
 				coinSound.setLocation(coinTwo.getWorldLocation());
+				coinSound.setVolume(70);
+				coinSound.getVolume();
 				coinSound.play();
 			}else{
 				coinSound.stop();
